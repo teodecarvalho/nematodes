@@ -162,6 +162,6 @@ class Model_Nematoides():
             axs[i].imshow(img, cmap = "gray")
         plt.show()
 
-if __name__ == "__main__":
-    model = Model_Nematoides()
-    model.main(img_path ="imagens/nem__4__1__.jpg")
+# if __name__ == "__main__":
+#     model = Model_Nematoides()
+#     model.main(img_path ="imagens/nem__4__1__.jpg")
