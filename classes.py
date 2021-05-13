@@ -13,7 +13,7 @@ class Stage():
         self.serial = serial.Serial(port, 115200, timeout=3)
         sleep(3)
 
-    def send_gcode_str(self, gcode_str, debug = False):
+    def send_gcode_str(self, gcode_str, debug = True):
         self.serial.flushInput()
         sleep(.01)
         if debug:
@@ -46,14 +46,14 @@ class Stage():
         self.send_gcode_str(f"G90 X{x}")
         return self.wait_move()
 
-    def move_y(self, y, invert_y = True):
+    def move_y(self, y, invert_y = False):
         if invert_y:
             y = -y
         self.send_gcode_str(f"G90 Y{y}")
         return self.wait_move()
 
     def scan(self,camera, xend, yend, step_x, step_y, xstart = 0, ystart = 0,
-             invert_x = False, invert_y = True):
+             invert_x = False, invert_y = False):
         range_x = xend - xstart
         range_y = yend - ystart
         nsteps_x = ceil(range_x/float(step_x)) + 1
