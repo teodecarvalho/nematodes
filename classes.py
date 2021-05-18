@@ -90,6 +90,10 @@ class Camera():
     def crop(self, image, xstart, xend, ystart, yend):
         return image[xstart:xend, ystart:yend]
 
+    def capture_red_layer_and_make_square(self, image):
+        return image[:, 0:480, 0]
+
     def capture_during_scan(self, x, y):
         self._image = self.capture()
+        self._image = self.capture_red_layer_and_make_square(self._image)
         self.save(self._image, f"imagens/nem__{x}__{y}__.png")

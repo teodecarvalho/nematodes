@@ -17,6 +17,9 @@ import cv2
 
 class Model_Nematoides():
     def __init__(self):
+        self.load_model(model_path = "model_for_nematodes.h5")
+
+    def load_model(self, model_path):
         kw = dict(activation='relu', kernel_initializer='he_normal', padding='same')
 
         IMG_HEIGHT = 224
@@ -81,7 +84,7 @@ class Model_Nematoides():
         self.model = Model(inputs=[inputs], outputs=[outputs])
         self.model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
         self.model.summary()
-        self.model.load_weights("model_for_nematodes.h5")
+        self.model.load_weights(model_path)
 
     def read_image(self, image_path):
         img = cv2.imread(image_path, 0)
@@ -101,7 +104,7 @@ class Model_Nematoides():
         mask[mask >= threshold] = 1
         return resize_mask(mask)
 
-    def close_mask(self, mask, square_size = 6):
+    def close_mask(self, mask, square_size = 2):
         mask = closing(mask, square(square_size))
         return mask
 
@@ -121,15 +124,24 @@ class Model_Nematoides():
     def measure_nematoides(self, mask, show_image=False):
         label_im = label(mask)
         results = []
-        for count, region in enumerate(regionprops(label_im)):
-            skel = skeletonize(region.image)
-            Skel = Skeleton(skel)
-            result = {"id": count,
-                      "width": self.calculate_width(region.image),
-                      "npaths": Skel.n_paths,
-                      "length": Skel.path_lengths()[0],
-                      "fatness": float(region.area) / Skel.path_lengths()[0]}
-            results.append(result)
+        if regionprops(label_im):
+            for count, region in enumerate(regionprops(label_im)):
+                skel = skeletonize(region.image)
+                Skel = Skeleton(skel)
+                result = {"id": count,
+                          "width": self.calculate_width(region.image),
+                          "npaths": Skel.n_paths,
+                          "length": Skel.path_lengths()[0],
+                          "fatness": float(region.area) / Skel.path_lengths()[0],
+                          "centroid_x_pix": region.centroid[1],
+                          "centroid_y_pix": region.centroid[0],
+                          "centroid_x":region.centroid[1]/float(mask.shape[1]),
+                          "centroid_y":1 - region.centroid[0]/float(mask.shape[0]),
+                          "image":region.image}
+                results.append(result)
+        else:
+            results = [{"id":None, "width":None, "npaths":None, "length":None, "fatness":None, "centroid_x":None,
+                        "centroid_y":None,  "centroid_y_pix":None,  "centroid_x_pix":None, "image":None}]
         data = pd.DataFrame(results)
         #if show_image:
         #    show_nematoides(im, label_im)
@@ -149,7 +161,7 @@ class Model_Nematoides():
         mask2 = self.close_mask(mask1)
         mask3 = self.erase_small_region(mask2, min_area = 16)
         mask4 = clear_border(mask3)
-        self.show_img(img_list = [resize(img_or, (224, 224)), mask1, mask2, mask3, mask4])
+        #self.show_img(img_list = [resize(img_or, (224, 224)), mask1, mask2, mask3, mask4])
         data = self.measure_nematoides(mask4)
         coordinates = self.get_coordinates(img_path)
         data[["img_x"]] = coordinates[0]
@@ -161,7 +173,3 @@ class Model_Nematoides():
         for i, img in enumerate(img_list):
             axs[i].imshow(img, cmap = "gray")
         plt.show()
-
-if __name__ == "__main__":
-    model = Model_Nematoides()
-    model.main(img_path ="imagens/nem__4__1__.jpg")

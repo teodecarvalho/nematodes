@@ -1,4 +1,9 @@
-from time import sleep
+from skimage.io import imread, imsave
+import matplotlib.pyplot as plt
+import os
+import pandas as pd
+
+from segmentation import Model_Nematoides
 
 from classes import Stage, Camera
 stage = Stage("COM3")

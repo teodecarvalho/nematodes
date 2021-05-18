@@ -1,4 +1,5 @@
-./imagens/*.png
+./imagens/*
 .idea
 __pyc*
 venv
+.DS*
