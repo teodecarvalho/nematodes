@@ -14,3 +14,4 @@ if __name__ == "__main__":
                ystart = 2, yend = 6, step_y = 1,
                camera = camera, invert_x=False,
                invert_y = False)
+
