@@ -1,14 +1,7 @@
 import matplotlib.pyplot as plt
-from skimage.io import imread, imsave
-from glob import glob
-import json
-import numpy as np
-import os
-import shutil
-from skimage.draw import polygon
-import pandas as pd
+from skimage.io import imread
 
-from process_data import Nematode_df
+from Archive.process_data import Nematode_df
 nematodes = Nematode_df()
 nematodes.data.to_csv("data_w_images.csv")
 
