@@ -18,13 +18,17 @@ class Nematode_df():
 
     def get_nematode_data(self):
         results = []
-        for img in glob("imagens/*__.png"):
-            data = self.model.main(img)
-            results.append(data)
+        for i, img in enumerate(glob("imagens_col/*__.png")):
+            try:
+                data = self.model.main(img)
+                results.append(data)
+                print(i)
+            except:
+                pass
         data = pd.concat(results)
         data = data[data.centroid_x.notna()]
-        data[["centroid_x"]] = data.centroid_x * self.IMG_SIZE_MM + data.img_x.astype(int) * self.STEP_MM
-        data[["centroid_y"]] = data.centroid_y * self.IMG_SIZE_MM + data.img_y.astype(int) * self.STEP_MM
+        data["centroid_x"] = data["centroid_x"] * self.IMG_SIZE_MM + data["img_x"].astype(int) * self.STEP_MM
+        data["centroid_y"] = data["centroid_y"] * self.IMG_SIZE_MM + data["img_y"].astype(int) * self.STEP_MM
         data["N"] = range(len(data))
         data[["label"]] = data.id.astype(str) + "_" + data.img_x + "_" + data.img_y
         self.data = data

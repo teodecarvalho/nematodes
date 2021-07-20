@@ -7,6 +7,7 @@ from skimage.morphology import skeletonize, medial_axis, closing, square
 from skimage.segmentation import clear_border
 import matplotlib.pyplot as plt
 import numpy as np
+from skimage.io import imsave, imread
 
 import pandas as pd
 from skan import Skeleton
@@ -22,62 +23,62 @@ class Model_Nematoides():
     def load_model(self, model_path):
         kw = dict(activation='relu', kernel_initializer='he_normal', padding='same')
 
-        IMG_HEIGHT = 224
-        IMG_WIDTH = 224
-        IMG_CHANNELS = 1
+        IMG_HEIGHT = 480
+        IMG_WIDTH = 480
+        IMG_CHANNELS = 3
 
         inputs = Input((IMG_HEIGHT, IMG_WIDTH, IMG_CHANNELS))
         # s = Lambda(lambda x: x / 255)(inputs)
 
         # Contraction path
-        c1 = Conv2D(16, (3, 3), **kw)(inputs)
+        c1 = Conv2D(32, (3, 3), **kw)(inputs)
         c1 = Dropout(0.1)(c1)
-        c1 = Conv2D(16, (3, 3), **kw)(c1)
+        c1 = Conv2D(32, (3, 3), **kw)(c1)
         p1 = MaxPooling2D((2, 2))(c1)
 
-        c2 = Conv2D(32, (3, 3), **kw)(p1)
+        c2 = Conv2D(64, (3, 3), **kw)(p1)
         c2 = Dropout(0.1)(c2)
-        c2 = Conv2D(32, (3, 3), **kw)(c2)
+        c2 = Conv2D(64, (3, 3), **kw)(c2)
         p2 = MaxPooling2D((2, 2))(c2)
 
-        c3 = Conv2D(64, (3, 3), **kw)(p2)
+        c3 = Conv2D(128, (3, 3), **kw)(p2)
         c3 = Dropout(0.2)(c3)
-        c3 = Conv2D(64, (3, 3), **kw)(c3)
+        c3 = Conv2D(128, (3, 3), **kw)(c3)
         p3 = MaxPooling2D((2, 2))(c3)
 
-        c4 = Conv2D(128, (3, 3), **kw)(p3)
+        c4 = Conv2D(256, (3, 3), **kw)(p3)
         c4 = Dropout(0.2)(c4)
-        c4 = Conv2D(128, (3, 3), **kw)(c4)
+        c4 = Conv2D(256, (3, 3), **kw)(c4)
         p4 = MaxPooling2D(pool_size=(2, 2))(c4)
 
-        c5 = Conv2D(256, (3, 3), **kw)(p4)
+        c5 = Conv2D(512, (3, 3), **kw)(p4)
         c5 = Dropout(0.3)(c5)
-        c5 = Conv2D(256, (3, 3), **kw)(c5)
+        c5 = Conv2D(512, (3, 3), **kw)(c5)
 
         kw_conv2transp = dict(strides=(2, 2), padding='same')
-        u6 = Conv2DTranspose(128, (2, 2), **kw_conv2transp)(c5)
+        u6 = Conv2DTranspose(256, (2, 2), **kw_conv2transp)(c5)
         u6 = concatenate([u6, c4])
-        c6 = Conv2D(128, (3, 3), **kw)(u6)
+        c6 = Conv2D(256, (3, 3), **kw)(u6)
         c6 = Dropout(0.2)(c6)
-        c6 = Conv2D(128, (3, 3), **kw)(c6)
+        c6 = Conv2D(256, (3, 3), **kw)(c6)
 
         u7 = Conv2DTranspose(64, (2, 2), **kw_conv2transp)(c6)
         u7 = concatenate([u7, c3])
-        c7 = Conv2D(64, (3, 3), **kw)(u7)
+        c7 = Conv2D(128, (3, 3), **kw)(u7)
         c7 = Dropout(0.2)(c7)
-        c7 = Conv2D(64, (3, 3), **kw)(c7)
+        c7 = Conv2D(128, (3, 3), **kw)(c7)
 
-        u8 = Conv2DTranspose(32, (2, 2), **kw_conv2transp)(c7)
+        u8 = Conv2DTranspose(128, (2, 2), **kw_conv2transp)(c7)
         u8 = concatenate([u8, c2])
-        c8 = Conv2D(32, (3, 3), **kw)(u8)
+        c8 = Conv2D(64, (3, 3), **kw)(u8)
         c8 = Dropout(0.1)(c8)
-        c8 = Conv2D(32, (3, 3), **kw)(c8)
+        c8 = Conv2D(64, (3, 3), **kw)(c8)
 
-        u9 = Conv2DTranspose(16, (2, 2), **kw_conv2transp)(c8)
+        u9 = Conv2DTranspose(64, (2, 2), **kw_conv2transp)(c8)
         u9 = concatenate([u9, c1], axis=3)
-        c9 = Conv2D(16, (3, 3), **kw)(u9)
+        c9 = Conv2D(64, (3, 3), **kw)(u9)
         c9 = Dropout(0.1)(c9)
-        c9 = Conv2D(16, (3, 3), **kw)(c9)
+        c9 = Conv2D(64, (3, 3), **kw)(c9)
 
         outputs = Conv2D(1, (1, 1), activation='sigmoid')(c9)
 
@@ -87,13 +88,11 @@ class Model_Nematoides():
         self.model.load_weights(model_path)
 
     def read_image(self, image_path):
-        img = cv2.imread(image_path, 0)
+        img = imread(image_path)
         return img
 
     def preprocess(self, img):
-        img = resize(img, (224, 224))
         img = np.expand_dims(img, axis=0)
-        img = np.expand_dims(img, axis=3)
         return img
 
     def predict(self, img, threshold = .5):
@@ -155,18 +154,27 @@ class Model_Nematoides():
         return (x, y)
 
     def main(self, img_path):
+        print(img_path)
         img_or = self.read_image(img_path)
         img = self.preprocess(img_or)
-        mask1 = self.predict(img)
+        mask1 = self.predict(img, threshold=.5)
+        filename = img_path.split("/")[1]
+        imsave(f"predicted_masks/{filename}", mask1)
         mask2 = self.close_mask(mask1)
-        mask3 = self.erase_small_region(mask2, min_area = 16)
+        mask3 = self.erase_small_region(mask2, min_area = 1550)
         mask4 = clear_border(mask3)
-        #self.show_img(img_list = [resize(img_or, (224, 224)), mask1, mask2, mask3, mask4])
+        # #self.show_img(img_list = [resize(img_or, (224, 224)), mask1, mask2, mask3, mask4])
         data = self.measure_nematoides(mask4)
         coordinates = self.get_coordinates(img_path)
         data[["img_x"]] = coordinates[0]
         data[["img_y"]] = coordinates[1]
+        self.save_nematode_img(data)
         return data
+
+    def save_nematode_img(self, data):
+        if any(data.id):
+            for i, row in data.iterrows():
+                imsave(f"nematodes/nem__{row.img_x}__{row.img_y}__{row.id}.png", row.image)
 
     def show_img(self, img_list):
         fig, axs = plt.subplots(len(img_list))

@@ -1,4 +1,8 @@
-./imagens/*
+imagens_gray/*
+imagens_col/*
+imgens_col_inv/*
+*.png
+*.tif
 .idea
 __pyc*
 venv
