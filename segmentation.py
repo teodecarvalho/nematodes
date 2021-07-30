@@ -1,20 +1,20 @@
 from tensorflow.keras.layers import Conv2D, Dropout, MaxPooling2D, Lambda, Input
 from tensorflow.keras.layers import Conv2DTranspose, concatenate
 from tensorflow.keras import Model
-from skimage.transform import resize
 from skimage.measure import label, regionprops
 from skimage.morphology import skeletonize, medial_axis, closing, square
-from skimage.segmentation import clear_border
 import matplotlib.pyplot as plt
 import numpy as np
 from skimage.io import imsave, imread
+import os
+from glob import glob
 
 import pandas as pd
 from skan import Skeleton
 
-plt.rcParams["figure.figsize"] = (10, 10)
+from stitching import Image_Matrix, Stitcher
 
-import cv2
+plt.rcParams["figure.figsize"] = (10, 10)
 
 class Model_Nematoides():
     def __init__(self):
@@ -88,7 +88,7 @@ class Model_Nematoides():
         self.model.load_weights(model_path)
 
     def read_image(self, image_path):
-        img = imread(image_path)
+        img = imread(image_path)[:,:,0:3]
         return img
 
     def preprocess(self, img):
@@ -115,69 +115,48 @@ class Model_Nematoides():
                     image[coord[0], coord[1]] = 0
         return image
 
-    def calculate_width(self, image):
-        _, distance = medial_axis(image, return_distance=True)
-        max_width = max(distance[image > 0]) * 2
-        return(max_width)
-
-    def measure_nematoides(self, mask, show_image=False):
-        label_im = label(mask)
-        results = []
-        if regionprops(label_im):
-            for count, region in enumerate(regionprops(label_im)):
-                skel = skeletonize(region.image)
-                Skel = Skeleton(skel)
-                result = {"id": count,
-                          "width": self.calculate_width(region.image),
-                          "npaths": Skel.n_paths,
-                          "length": Skel.path_lengths()[0],
-                          "fatness": float(region.area) / Skel.path_lengths()[0],
-                          "centroid_x_pix": region.centroid[1],
-                          "centroid_y_pix": region.centroid[0],
-                          "centroid_x":region.centroid[1]/float(mask.shape[1]),
-                          "centroid_y":1 - region.centroid[0]/float(mask.shape[0]),
-                          "image":region.image}
-                results.append(result)
-        else:
-            results = [{"id":None, "width":None, "npaths":None, "length":None, "fatness":None, "centroid_x":None,
-                        "centroid_y":None,  "centroid_y_pix":None,  "centroid_x_pix":None, "image":None}]
-        data = pd.DataFrame(results)
-        #if show_image:
-        #    show_nematoides(im, label_im)
-        print(f"Found {len(data)} nematoides in the image!")
-        if any(data.npaths > 1):
-            print("Some branching were detected. The total number of nematoides might be underestimated")
-        return data
-
-    def get_coordinates(self, img_path):
-        (x, y) = (img_path.split("__")[1:3])
-        return (x, y)
-
-    def main(self, img_path):
+    def segment(self, img_path):
         print(img_path)
         img_or = self.read_image(img_path)
         img = self.preprocess(img_or)
         mask1 = self.predict(img, threshold=.5)
-        filename = img_path.split("/")[1]
-        imsave(f"predicted_masks/{filename}", mask1)
         mask2 = self.close_mask(mask1)
-        mask3 = self.erase_small_region(mask2, min_area = 1550)
-        mask4 = clear_border(mask3)
-        # #self.show_img(img_list = [resize(img_or, (224, 224)), mask1, mask2, mask3, mask4])
-        data = self.measure_nematoides(mask4)
-        coordinates = self.get_coordinates(img_path)
-        data[["img_x"]] = coordinates[0]
-        data[["img_y"]] = coordinates[1]
-        self.save_nematode_img(data)
-        return data
+        mask3 = self.erase_small_region(mask2, min_area = 1000)
+        return mask3
 
-    def save_nematode_img(self, data):
-        if any(data.id):
-            for i, row in data.iterrows():
-                imsave(f"nematodes/nem__{row.img_x}__{row.img_y}__{row.id}.png", row.image)
+    def detect_nematodes(self, img_path):
+        mask = self.segment(img_path)
+        area = mask.sum()
+        if(area > 0):
+            print("Yes")
+        return area > 0
 
-    def show_img(self, img_list):
-        fig, axs = plt.subplots(len(img_list))
-        for i, img in enumerate(img_list):
-            axs[i].imshow(img, cmap = "gray")
-        plt.show()
+    def make_matrix(self, img_dir):
+        xs = [int(f.split("__")[1]) for f in os.listdir(img_dir) if ".png" in f]
+        ys = [int(f.split("__")[2]) for f in os.listdir(img_dir) if ".png" in f]
+        return(np.zeros(shape=(max(ys) + 1, max(xs) + 1)))
+
+    def populate_matrix(self, matrix, found_nematodes_list):
+        xs = [int(f.split("__")[1]) for f in found_nematodes_list]
+        ys = [int(f.split("__")[2]) for f in found_nematodes_list]
+        for x, y in zip(xs, ys):
+            matrix[y, x] = 1
+        return matrix
+
+if __name__ == "__main__":
+    model_nematodes = Model_Nematoides()
+    # with open("found_nematodes.txt", "w") as handle:
+    #     for i, img in enumerate(glob("imagens_col/*__.png")):
+    #         detected = model_nematodes.detect_nematodes(img)
+    #         if detected:
+    #             handle.write(img + "\n")
+    mat = model_nematodes.make_matrix("./imagens_col")
+    with open("found_nematodes.txt", "r") as handle:
+        found_nematodes = handle.readlines()
+    mat = model_nematodes.populate_matrix(mat, found_nematodes)
+    image_matrix = Image_Matrix(mat)
+    regions = image_matrix.get_regions()
+    stitcher = Stitcher(regions)
+    for i, region in enumerate(regions.values()):
+        stitcher.get_images("./imagens_col", i)
+        stitcher.stitch_region(i)

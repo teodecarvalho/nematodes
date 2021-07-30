@@ -7,3 +7,6 @@ imgens_col_inv/*
 __pyc*
 venv
 .DS*
+temp
+.tmp*
+found_nematodes.txt

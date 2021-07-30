@@ -6,3 +6,4 @@ skan
 numba
 pyserial
 imantics
+pyimagej
