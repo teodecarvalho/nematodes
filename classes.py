@@ -54,12 +54,15 @@ class Stage():
         return self.wait_move()
 
     def scan(self,camera, xend, yend, step_x, step_y, xstart = 0, ystart = 0,
-             invert_x = False, invert_y = False):
+             invert_x = False, invert_y = False, extension = "png"):
         range_x = xend - xstart
         range_y = yend - ystart
         nsteps_x = ceil(range_x/float(step_x)) + 1
         nsteps_y = ceil(range_y/ float(step_y)) + 1
-        flip = False
+        # For compatibility with the Stitching plugin in FIJI
+        # I need to invert both x and y coordinates in the filename
+        y_seq = range(nsteps_y)[::-1] # This will be used to invert the y coordinates
+        flip = True # Should be False, but was set to True to invert the x coordinates
         for y in range(nsteps_y):
             self.move_y(ystart + y * step_y, invert_y = invert_y)
             if flip:
@@ -69,7 +72,7 @@ class Stage():
             flip = not flip
             for x in x_seq:
                 self.move_x(xstart + x * step_x, invert_x = invert_x)
-                camera.capture_during_scan(x, y)
+                camera.capture_during_scan(x, y_seq[y], extension = extension)
         camera.cap.release()
 
 class Camera():
@@ -94,7 +97,7 @@ class Camera():
     def capture_red_layer_and_make_square(self, image):
         return image[:, 0:480, 0]
 
-    def capture_during_scan(self, x, y):
+    def capture_during_scan(self, x, y, extension = "png"):
         self._image = self.capture()
         self._image = self.capture_red_layer_and_make_square(self._image)
-        self.save(self._image, f"imagens/nem__{x}__{y}__.png")
+        self.save(self._image, f"imagens/nem__{x}__{y}__.{extension}")
