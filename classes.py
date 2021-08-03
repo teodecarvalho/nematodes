@@ -33,6 +33,7 @@ class Stage():
 
     def go_home(self):
         self.send_gcode_str("$H")
+        self.send_gcode_str("G10 P0 L20 X0 Y0 Z0")
 
     def wait_move(self):
         while not self.is_done():
