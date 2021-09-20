@@ -145,11 +145,12 @@ class Model_Nematoides():
 
 if __name__ == "__main__":
     model_nematodes = Model_Nematoides()
-    # with open("found_nematodes.txt", "w") as handle:
-    #     for i, img in enumerate(glob("imagens_col/*__.png")):
-    #         detected = model_nematodes.detect_nematodes(img)
-    #         if detected:
-    #             handle.write(img + "\n")
+    with open("found_nematodes.txt", "w") as handle:
+        for i, img in enumerate(glob("imagens_col/*__.png")):
+            print(i)
+            detected = model_nematodes.detect_nematodes(img)
+            if detected:
+                handle.write(img + "\n")
     mat = model_nematodes.make_matrix("./imagens_col")
     with open("found_nematodes.txt", "r") as handle:
         found_nematodes = handle.readlines()

@@ -34,9 +34,12 @@ class Image_Matrix():
     def check_new_cells(self):
         while self.new_cells:
             i, j = self.new_cells.pop()
-            if self.matrix[i, j] == 1:
-                if not (i, j) in self.found:
-                    self.add_cell(cell=(i, j))
+            try:
+                if self.matrix[i, j] == 1:
+                    if not (i, j) in self.found:
+                        self.add_cell(cell=(i, j))
+            except:
+                print(i)
 
     def get_regions(self):
         for i in range(self.nrows - 2)[1:]:  # The first and last rows are not considered
@@ -86,7 +89,7 @@ class Stitcher():
         fiji_macro = """run("Grid/Collection stitching", """ +\
         """ "type=[Filename defined position] order=[Defined by filename         ] """ +\
         f"""grid_size_x={(max_y-min_y) + 1} grid_size_y={(max_x - min_x) + 1} """ +\
-        f"""tile_overlap=20 first_file_index_x={min_y} """+\
+        f"""tile_overlap=15 first_file_index_x={min_y} """+\
         f"""first_file_index_y={min_x} directory={os.path.abspath("./temp")} """ +\
         """file_names=nem__{x}__{y}__.tif output_textfile_name=TileConfiguration.txt """ +\
         """fusion_method=[Linear Blending] regression_threshold=0.30 max/avg_displacement_threshold=2.50 """ +\
