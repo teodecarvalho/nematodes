@@ -10,3 +10,5 @@ venv
 temp
 .tmp*
 found_nematodes.txt
+*Icon*
+Archive/model_for*
