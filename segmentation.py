@@ -115,13 +115,17 @@ class Model_Nematoides():
                     image[coord[0], coord[1]] = 0
         return image
 
-    def segment(self, img_path):
+    def segment(self, img_path, save_masks = False):
         print(img_path)
         img_or = self.read_image(img_path)
         img = self.preprocess(img_or)
         mask1 = self.predict(img, threshold=.5)
-        mask2 = self.close_mask(mask1)
+        mask2 = self.close_mask(mask1, square_size = 3)
         mask3 = self.erase_small_region(mask2, min_area = 1000)
+        if save_masks:
+            filename = img_path.split("/")[2]
+            print(filename)
+            imsave(f"predicted_masks/{filename}", mask3)
         return mask3
 
     def detect_nematodes(self, img_path):
@@ -143,21 +147,27 @@ class Model_Nematoides():
             matrix[y, x] = 1
         return matrix
 
+    def apply_segmentation(self):
+        with open("found_nematodes.txt", "w") as handle:
+            for i, img in enumerate(glob("imagens_col/*__.png")):
+                print(i)
+                detected = model_nematodes.detect_nematodes(img)
+                if detected:
+                    handle.write(img + "\n")
+
+    def stitch(self):
+        mat = model_nematodes.make_matrix("./imagens_col")
+        with open("found_nematodes.txt", "r") as handle:
+            found_nematodes = handle.readlines()
+        mat = model_nematodes.populate_matrix(mat, found_nematodes)
+        image_matrix = Image_Matrix(mat)
+        regions = image_matrix.get_regions()
+        stitcher = Stitcher(regions)
+        for i, region in enumerate(regions.values()):
+            stitcher.get_images("./imagens_col", i)
+            stitcher.stitch_region(i)
+
 if __name__ == "__main__":
     model_nematodes = Model_Nematoides()
-    with open("found_nematodes.txt", "w") as handle:
-        for i, img in enumerate(glob("imagens_col/*__.png")):
-            print(i)
-            detected = model_nematodes.detect_nematodes(img)
-            if detected:
-                handle.write(img + "\n")
-    mat = model_nematodes.make_matrix("./imagens_col")
-    with open("found_nematodes.txt", "r") as handle:
-        found_nematodes = handle.readlines()
-    mat = model_nematodes.populate_matrix(mat, found_nematodes)
-    image_matrix = Image_Matrix(mat)
-    regions = image_matrix.get_regions()
-    stitcher = Stitcher(regions)
-    for i, region in enumerate(regions.values()):
-        stitcher.get_images("./imagens_col", i)
-        stitcher.stitch_region(i)
+    model_nematodes.apply_segmentation()
+    model_nematodes.stitch()
